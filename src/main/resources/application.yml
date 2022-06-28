@@ -1,0 +1,13 @@
+#server:
+#  error:
+#    include-message: always
+#    include-binding-errors: always
+#  port: 8081
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+
+
+key:
+  secret: "secret"
