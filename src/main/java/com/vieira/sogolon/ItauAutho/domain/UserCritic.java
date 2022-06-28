@@ -43,6 +43,7 @@ public class UserCritic implements UserDetails {
     private Boolean locked = false;
     private Boolean enabled = false;
     private Boolean authorized = false;
+    private Integer failedAttempts = 0;
     private String title;
     private Integer points = 0;
 

@@ -33,6 +33,7 @@ public class TokenService {
     private final UserService userService;
     private final static String tokenStarter = "Bearer ";
     private final Environment env;
+    private final static int tokenTime = 10 * 60 * 1000;
 
     public void getRefreshToken(HttpServletRequest request, HttpServletResponse response) {
         String authorizationHeader = request.getHeader(AUTHORIZATION);
@@ -72,9 +73,9 @@ public class TokenService {
     }
 
     public String generateAccessToken(UserCritic critic, HttpServletRequest request, Algorithm algorithm) {
-        return  JWT.create()
+        return JWT.create()
                 .withSubject(critic.getUsername())
-                .withExpiresAt(new Date(System.currentTimeMillis() + 10 * 60 * 1000))
+                .withExpiresAt(new Date(System.currentTimeMillis() + tokenTime))
                 .withIssuer(request.getRequestURL().toString())
                 .withClaim("roles", critic.getRoles().stream().map(Role::getName).collect(Collectors.toList()))
                 .sign(algorithm);

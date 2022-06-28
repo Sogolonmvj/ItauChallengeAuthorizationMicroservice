@@ -4,11 +4,11 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
+import com.vieira.sogolon.ItauAutho.domain.UserCritic;
+import com.vieira.sogolon.ItauAutho.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -17,6 +17,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import javax.naming.LimitExceededException;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -31,16 +32,15 @@ import java.util.stream.Collectors;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 @Slf4j
+@RequiredArgsConstructor
 public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
 
+    private final UserRepository userRepository;
     private final AuthenticationManager authenticationManager;
 
     private final static int tokenTime = 10 * 60 * 1000;
-    private final static int refreshTokenTime = 30 * 60 * 1000;
-
-    public CustomAuthenticationFilter(AuthenticationManager authenticationManager) {
-        this.authenticationManager = authenticationManager;
-    }
+    private final static int refreshTokenTime = 50 * 60 * 1000;
+    private final static int attemptLimit = 3;
 
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
@@ -53,7 +53,7 @@ public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFi
     }
 
     @Override
-    protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authentication) throws IOException, ServletException {
+    protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authentication) throws IOException {
         User user = (User) authentication.getPrincipal();
         Algorithm algorithm = Algorithm.HMAC256("secret".getBytes(StandardCharsets.UTF_8));
         String access_token = generateToken(user, request, tokenTime)
@@ -69,9 +69,23 @@ public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFi
     }
 
     @Override // to use cache
-    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed) throws IOException, ServletException {
-        log.error("Unsuccessful Login Attempt!");
-        super.unsuccessfulAuthentication(request, response, failed);
+    @SneakyThrows
+    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failedAuthentication) {
+        String username = request.getParameter("username");
+        UserCritic critic = userRepository.findByUsername(username);
+
+        if (critic != null) {
+            if (critic.getFailedAttempts() <= attemptLimit - 1) {
+                Integer attemptsCounter = critic.getFailedAttempts();
+                attemptsCounter++;
+                critic.setFailedAttempts(attemptsCounter);
+                userRepository.save(critic);
+            } else {
+                // implement time to unblock account
+                throw new LimitExceededException("Login attempt limit has exceeded!");
+            }
+        }
+        super.unsuccessfulAuthentication(request, response, failedAuthentication);
     }
 
     public JWTCreator.Builder generateToken(User user, HttpServletRequest request, int tokenTime) {

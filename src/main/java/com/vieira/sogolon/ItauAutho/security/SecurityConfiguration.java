@@ -1,5 +1,6 @@
 package com.vieira.sogolon.ItauAutho.security;
 
+import com.vieira.sogolon.ItauAutho.repository.UserRepository;
 import com.vieira.sogolon.ItauAutho.security.filter.CustomAuthenticationFilter;
 import com.vieira.sogolon.ItauAutho.security.filter.CustomAuthorizationFilter;
 
@@ -30,6 +31,7 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 @RequiredArgsConstructor
 public class SecurityConfiguration {
 
+    private final UserRepository userRepository;
     private final AuthenticationConfiguration authenticationConfiguration;
 
     @Bean
@@ -44,7 +46,7 @@ public class SecurityConfiguration {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        CustomAuthenticationFilter customAuthenticationFilter = new CustomAuthenticationFilter(authenticationManager(authenticationConfiguration));
+        CustomAuthenticationFilter customAuthenticationFilter = new CustomAuthenticationFilter(userRepository, authenticationManager(authenticationConfiguration));
         customAuthenticationFilter.setFilterProcessesUrl("/api/login");
 
         http
