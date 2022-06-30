@@ -1,4 +1,4 @@
-package com.vieira.sogolon.ItauAutho.domain;
+package com.vieira.sogolon.ItauAutho.entity;
 
 import com.vieira.sogolon.ItauAutho.enums.UserRole;
 import lombok.Data;
@@ -8,17 +8,14 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import javax.persistence.*;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-
-import static javax.persistence.FetchType.EAGER;
 
 
 @Data
 @NoArgsConstructor
 @Entity
-@Table(name="critic")
+@Table(name="critics")
 public class UserCritic implements UserDetails {
 
     @SequenceGenerator(name = "critic_sequence",
@@ -34,30 +31,15 @@ public class UserCritic implements UserDetails {
     private Long id;
     private String firstName;
     private String lastName;
-    private String username;
+    private String email;
     private String password;
     @Enumerated(EnumType.STRING)
-    @ManyToMany(fetch = EAGER)
-    private Collection<Role> roles = new ArrayList<>();
     private UserRole userRole;
     private Boolean locked = false;
     private Boolean enabled = false;
     private Boolean authorized = false;
     private Integer failedAttempts = 0;
-    private String title;
     private Integer points = 0;
-
-    public UserCritic(String firstName,
-                      String lastName,
-                      String username,
-                      String password,
-                      UserRole userRole) {
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.username = username;
-        this.password = password;
-        this.userRole = userRole;
-    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -73,7 +55,7 @@ public class UserCritic implements UserDetails {
 
     @Override
     public String getUsername() {
-        return username;
+        return email;
     }
 
     @Override

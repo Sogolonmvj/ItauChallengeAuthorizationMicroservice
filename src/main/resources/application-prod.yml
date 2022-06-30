@@ -1,12 +1,12 @@
 spring:
   datasource:
     password: 0wN3r
-    url: jdbc:postgresql://authorization_service:5432/authorization
+    url: jdbc:postgresql://critics-system-postgres:5432/critics_registration
     username: postgres
   jpa:
     generate-ddl: true
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect

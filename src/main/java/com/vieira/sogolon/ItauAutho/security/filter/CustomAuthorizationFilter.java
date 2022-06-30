@@ -6,6 +6,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -31,15 +32,19 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 @Slf4j
 public class CustomAuthorizationFilter extends OncePerRequestFilter {
 
+    private final static String TOKEN_STARTER = "Bearer ";
+    private final static String ERROR_MESSAGE = "Error logging in: {}";
+    private final static String ERROR = "error";
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         if (request.getServletPath().equals("/api/login") || request.getServletPath().equals("/api/token/refresh")) {
             filterChain.doFilter(request, response);
         } else {
             String authorizationHeader = request.getHeader(AUTHORIZATION);
-            if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            if (authorizationHeader != null && authorizationHeader.startsWith(TOKEN_STARTER)) {
                 try {
-                    String token = authorizationHeader.substring("Bearer ".length());
+                    String token = authorizationHeader.substring(TOKEN_STARTER.length());
                     Algorithm algorithm = Algorithm.HMAC256("secret".getBytes(StandardCharsets.UTF_8));
                     JWTVerifier verifier = JWT.require(algorithm).build();
                     DecodedJWT decodedJWT = verifier.verify(token);
@@ -52,8 +57,8 @@ public class CustomAuthorizationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authenticationToken);
                     filterChain.doFilter(request, response);
                 } catch (Exception exception) {
-                    log.error("Error logging in: {}", exception.getMessage());
-                    response.setHeader("error", exception.getMessage());
+                    log.error(ERROR_MESSAGE, exception.getMessage());
+                    response.setHeader(ERROR, exception.getMessage());
                     response.setStatus(FORBIDDEN.value());
                     Map<String, String> error = getException(exception);
                     response.setContentType(APPLICATION_JSON_VALUE);
@@ -67,7 +72,7 @@ public class CustomAuthorizationFilter extends OncePerRequestFilter {
 
     public Map<String, String> getException(Exception exception) {
         Map<String, String> error = new HashMap<>();
-        error.put("error_message", exception.getMessage());
+        error.put(ERROR, exception.getMessage());
 
         return error;
     }

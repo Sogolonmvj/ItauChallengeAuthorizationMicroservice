@@ -21,8 +21,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import static org.springframework.http.HttpMethod.GET;
-import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
 @Configuration
@@ -58,18 +56,6 @@ public class SecurityConfiguration {
                 .authorizeRequests()
                 .antMatchers("/api/login/**", "/api/token/refresh/**")
                 .permitAll();
-        http
-                .authorizeRequests()
-                .antMatchers(GET, "/api/user/**")
-                .hasAnyAuthority("READER");
-        http
-                .authorizeRequests()
-                .antMatchers(GET, "/api/users")
-                .hasAnyAuthority("MODERATOR");
-        http
-                .authorizeRequests()
-                .antMatchers(POST, "/api/user/save/**")
-                .hasAnyAuthority("MODERATOR");
         http
                 .authorizeRequests()
                 .anyRequest()

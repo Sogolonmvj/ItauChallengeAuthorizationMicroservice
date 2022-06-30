@@ -4,11 +4,12 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.vieira.sogolon.ItauAutho.domain.UserCritic;
+import com.vieira.sogolon.ItauAutho.entity.UserCritic;
 import com.vieira.sogolon.ItauAutho.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -26,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
@@ -40,6 +42,10 @@ public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFi
     private final static int tokenTime = 10 * 60 * 1000;
     private final static int refreshTokenTime = 50 * 60 * 1000;
     private final static int attemptLimit = 3;
+    private final static String ACCESS_TOKEN = "access_token";
+    private final static String REFRESH_TOKEN = "refresh_token";
+    private final static String LIMIT_EXCEEDED = "Login attempt limit has exceeded!";
+
 
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
@@ -61,27 +67,26 @@ public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFi
         String refresh_token = generateToken(user, request, refreshTokenTime)
                 .sign(algorithm);
         Map<String, String> tokens = new HashMap<>();
-        tokens.put("access_token", access_token);
-        tokens.put("refresh_token", refresh_token);
+        tokens.put(ACCESS_TOKEN, access_token);
+        tokens.put(REFRESH_TOKEN, refresh_token);
         response.setContentType(APPLICATION_JSON_VALUE);
         new ObjectMapper().writeValue(response.getOutputStream(), tokens);
     }
 
-    @Override // to use cache
+    @Override
     @SneakyThrows
     protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failedAuthentication) {
         String username = request.getParameter("username");
-        UserCritic critic = userRepository.findByUsername(username);
+        Optional<UserCritic> critic = userRepository.findByEmail(username);
 
-        if (critic != null) {
-            if (critic.getFailedAttempts() <= attemptLimit - 1) {
-                Integer attemptsCounter = critic.getFailedAttempts();
+        if (critic.isPresent()) {
+            if (critic.get().getFailedAttempts() <= attemptLimit - 1) {
+                Integer attemptsCounter = critic.get().getFailedAttempts();
                 attemptsCounter++;
-                critic.setFailedAttempts(attemptsCounter);
-                userRepository.save(critic);
+                critic.get().setFailedAttempts(attemptsCounter);
+                userRepository.save(critic.get());
             } else {
-                // implement time to unblock account
-                throw new LimitExceededException("Login attempt limit has exceeded!");
+                throw new LimitExceededException(LIMIT_EXCEEDED);
             }
         }
         super.unsuccessfulAuthentication(request, response, failedAuthentication);
