@@ -9,7 +9,6 @@ import com.vieira.sogolon.ItauAutho.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -24,6 +23,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -45,16 +45,26 @@ public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFi
     private final static String ACCESS_TOKEN = "access_token";
     private final static String REFRESH_TOKEN = "refresh_token";
     private final static String LIMIT_EXCEEDED = "Login attempt limit has exceeded!";
+    private final static String BLOCKED_ACCOUNT = "This account is not enabled! Please, verify your email!";
 
 
+    @SneakyThrows
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
        String username = request.getParameter("username");
-       String password = request.getParameter("password");
-       log.info("Username is: {}", username);
-       log.info("Password is: {}", password);
-       UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(username, password);
-       return authenticationManager.authenticate(authenticationToken);
+       Optional<UserCritic> critic = userRepository.findByEmail(username);
+       if (critic.isPresent() && checkIsEnabled(critic.get())) {
+           String password = request.getParameter("password");
+           log.info("Username is: {}", username);
+           log.info("Password is: {}", password);
+           UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(username, password);
+           return authenticationManager.authenticate(authenticationToken);
+       }
+       throw new AccessDeniedException(BLOCKED_ACCOUNT);
+    }
+
+    public Boolean checkIsEnabled(UserCritic critic) {
+        return critic.getEnabled();
     }
 
     @Override
